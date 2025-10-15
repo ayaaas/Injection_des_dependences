@@ -1,0 +1,99 @@
+Injection des dépendances et passage de Java à Spring
+Ce travail a pour objectif de comprendre le principe de l’injection des dépendances (IoC) en Java et de voir comment le framework Spring simplifie ce mécanisme. L’injection des dépendances permet de réduire le couplage entre les classes, en laissant une autre entité fournir les objets nécessaires au lieu de les instancier directement.
+
+1. Structure du projet
+Le projet comporte plusieurs packages :
+
+Dao : contient l’accès aux données (IDao, DaoImpl, DaoImplV2)
+
+Metier : contient la logique métier (IMetier, MetierImpl)
+
+Presentation : regroupe les classes de test (Pres1, Pres2, PresentationAnnotation)
+
+2. Injection statique
+Dans cette approche, les objets sont instanciés directement dans le code.
+
+
+DaoImpl dao = new DaoImpl();
+MetierImpl metier = new MetierImpl(dao);
+System.out.println("Résultat = " + metier.calcul());
+Cette méthode crée un couplage fort entre les classes, car tout changement de dépendance nécessite une modification du code source.
+
+3. Injection dynamique
+Cette méthode repose sur la réflexion et un fichier externe config.txt. Les noms des classes sont lus à l’exécution, ce qui rend le code plus flexible.
+
+Scanner scanner = new Scanner(new File("config.txt"));
+String daoClassName = scanner.nextLine();
+Class cDao = Class.forName(daoClassName);
+IDao dao = (IDao) cDao.newInstance();
+
+String metierClassName = scanner.nextLine();
+Class cMetier = Class.forName(metierClassName);
+IMetier metier = (IMetier) cMetier.getConstructor(IDao.class).newInstance(dao);
+
+System.out.println("Résultat = " + metier.calcul());
+Cette méthode permet de changer l’implémentation des classes sans modifier le code, simplement en éditant le fichier config.txt.
+
+4. Injection avec Spring (XML)
+Spring permet d’automatiser la création et l’injection des dépendances via un fichier de configuration.
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <bean id="dao" class="com.locationvoiture.injection_des_dependences.Dao.DaoImpl"/>
+    <bean id="metier" class="com.locationvoiture.injection_des_dependences.Metier.MetierImpl">
+        <property name="dao" ref="dao"/>
+    </bean>
+</beans>
+Classe de présentation :
+
+ApplicationContext context = new ClassPathXmlApplicationContext("config.xml");
+IMetier metier = (IMetier) context.getBean("metier");
+System.out.println("Résultat = " + metier.calcul());
+5. Injection avec Spring (Annotations)
+Spring peut aussi injecter les dépendances automatiquement grâce aux annotations.
+
+
+@Component("dao")
+public class DaoImpl implements IDao { 
+    @Override
+    public double getData() {
+        System.out.println("Version base de données");
+        return 23;
+    }
+}
+java
+Copier le code
+@Component("metier")
+public class MetierImpl implements IMetier {
+    @Autowired
+    private IDao dao;
+
+    @Override
+    public double calcul() {
+        double t = dao.getData();
+        double res = t * 12 * Math.PI / 2 * Math.cos(t);
+        return res;
+    }
+}
+Classe de présentation :
+
+ApplicationContext context =
+     new AnnotationConfigApplicationContext("com.locationvoiture.injection_des_dependences");
+IMetier metier = context.getBean(IMetier.class);
+System.out.println("Résultat = " + metier.calcul());
+Avec cette approche, il n’est plus nécessaire d’utiliser un fichier XML : Spring détecte et injecte automatiquement les dépendances grâce aux annotations @Component et @Autowired.
+
+6. Conclusion
+Ce travail a permis d’observer trois niveaux d’évolution de l’injection des dépendances :
+
+Injection statique : simple mais fortement couplée.
+
+Injection dynamique : plus souple grâce à la réflexion et à la configuration externe.
+
+Injection Spring : entièrement automatisée et modulaire, offrant une gestion simplifiée et un code plus maintenable.
+
+Spring illustre l’avantage de déléguer la création des objets à un conteneur IoC, ce qui rend l’application plus flexible, plus évolutive et mieux structurée selon les principes de la programmation orientée objet.
+
